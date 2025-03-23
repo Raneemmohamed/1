@@ -1,0 +1,848 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "gpuType": "A100",
+      "authorship_tag": "ABX9TyOPhUbd3Pn5zQfQtSrP/+Bz",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    },
+    "accelerator": "GPU"
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Raneemmohamed/1/blob/main/cnn-lstm%20for%20sign%20language%20recognation\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 1,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 91
+        },
+        "id": "e_h7Bq67VXkN",
+        "outputId": "75a73b07-3190-423a-854c-c4f06c379aee"
+      },
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/plain": [
+              "<IPython.core.display.HTML object>"
+            ],
+            "text/html": [
+              "\n",
+              "     <input type=\"file\" id=\"files-db4ab81a-0b6c-4e13-a9fb-7b96bcca10d9\" name=\"files[]\" multiple disabled\n",
+              "        style=\"border:none\" />\n",
+              "     <output id=\"result-db4ab81a-0b6c-4e13-a9fb-7b96bcca10d9\">\n",
+              "      Upload widget is only available when the cell has been executed in the\n",
+              "      current browser session. Please rerun this cell to enable.\n",
+              "      </output>\n",
+              "      <script>// Copyright 2017 Google LLC\n",
+              "//\n",
+              "// Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+              "// you may not use this file except in compliance with the License.\n",
+              "// You may obtain a copy of the License at\n",
+              "//\n",
+              "//      http://www.apache.org/licenses/LICENSE-2.0\n",
+              "//\n",
+              "// Unless required by applicable law or agreed to in writing, software\n",
+              "// distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+              "// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+              "// See the License for the specific language governing permissions and\n",
+              "// limitations under the License.\n",
+              "\n",
+              "/**\n",
+              " * @fileoverview Helpers for google.colab Python module.\n",
+              " */\n",
+              "(function(scope) {\n",
+              "function span(text, styleAttributes = {}) {\n",
+              "  const element = document.createElement('span');\n",
+              "  element.textContent = text;\n",
+              "  for (const key of Object.keys(styleAttributes)) {\n",
+              "    element.style[key] = styleAttributes[key];\n",
+              "  }\n",
+              "  return element;\n",
+              "}\n",
+              "\n",
+              "// Max number of bytes which will be uploaded at a time.\n",
+              "const MAX_PAYLOAD_SIZE = 100 * 1024;\n",
+              "\n",
+              "function _uploadFiles(inputId, outputId) {\n",
+              "  const steps = uploadFilesStep(inputId, outputId);\n",
+              "  const outputElement = document.getElementById(outputId);\n",
+              "  // Cache steps on the outputElement to make it available for the next call\n",
+              "  // to uploadFilesContinue from Python.\n",
+              "  outputElement.steps = steps;\n",
+              "\n",
+              "  return _uploadFilesContinue(outputId);\n",
+              "}\n",
+              "\n",
+              "// This is roughly an async generator (not supported in the browser yet),\n",
+              "// where there are multiple asynchronous steps and the Python side is going\n",
+              "// to poll for completion of each step.\n",
+              "// This uses a Promise to block the python side on completion of each step,\n",
+              "// then passes the result of the previous step as the input to the next step.\n",
+              "function _uploadFilesContinue(outputId) {\n",
+              "  const outputElement = document.getElementById(outputId);\n",
+              "  const steps = outputElement.steps;\n",
+              "\n",
+              "  const next = steps.next(outputElement.lastPromiseValue);\n",
+              "  return Promise.resolve(next.value.promise).then((value) => {\n",
+              "    // Cache the last promise value to make it available to the next\n",
+              "    // step of the generator.\n",
+              "    outputElement.lastPromiseValue = value;\n",
+              "    return next.value.response;\n",
+              "  });\n",
+              "}\n",
+              "\n",
+              "/**\n",
+              " * Generator function which is called between each async step of the upload\n",
+              " * process.\n",
+              " * @param {string} inputId Element ID of the input file picker element.\n",
+              " * @param {string} outputId Element ID of the output display.\n",
+              " * @return {!Iterable<!Object>} Iterable of next steps.\n",
+              " */\n",
+              "function* uploadFilesStep(inputId, outputId) {\n",
+              "  const inputElement = document.getElementById(inputId);\n",
+              "  inputElement.disabled = false;\n",
+              "\n",
+              "  const outputElement = document.getElementById(outputId);\n",
+              "  outputElement.innerHTML = '';\n",
+              "\n",
+              "  const pickedPromise = new Promise((resolve) => {\n",
+              "    inputElement.addEventListener('change', (e) => {\n",
+              "      resolve(e.target.files);\n",
+              "    });\n",
+              "  });\n",
+              "\n",
+              "  const cancel = document.createElement('button');\n",
+              "  inputElement.parentElement.appendChild(cancel);\n",
+              "  cancel.textContent = 'Cancel upload';\n",
+              "  const cancelPromise = new Promise((resolve) => {\n",
+              "    cancel.onclick = () => {\n",
+              "      resolve(null);\n",
+              "    };\n",
+              "  });\n",
+              "\n",
+              "  // Wait for the user to pick the files.\n",
+              "  const files = yield {\n",
+              "    promise: Promise.race([pickedPromise, cancelPromise]),\n",
+              "    response: {\n",
+              "      action: 'starting',\n",
+              "    }\n",
+              "  };\n",
+              "\n",
+              "  cancel.remove();\n",
+              "\n",
+              "  // Disable the input element since further picks are not allowed.\n",
+              "  inputElement.disabled = true;\n",
+              "\n",
+              "  if (!files) {\n",
+              "    return {\n",
+              "      response: {\n",
+              "        action: 'complete',\n",
+              "      }\n",
+              "    };\n",
+              "  }\n",
+              "\n",
+              "  for (const file of files) {\n",
+              "    const li = document.createElement('li');\n",
+              "    li.append(span(file.name, {fontWeight: 'bold'}));\n",
+              "    li.append(span(\n",
+              "        `(${file.type || 'n/a'}) - ${file.size} bytes, ` +\n",
+              "        `last modified: ${\n",
+              "            file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() :\n",
+              "                                    'n/a'} - `));\n",
+              "    const percent = span('0% done');\n",
+              "    li.appendChild(percent);\n",
+              "\n",
+              "    outputElement.appendChild(li);\n",
+              "\n",
+              "    const fileDataPromise = new Promise((resolve) => {\n",
+              "      const reader = new FileReader();\n",
+              "      reader.onload = (e) => {\n",
+              "        resolve(e.target.result);\n",
+              "      };\n",
+              "      reader.readAsArrayBuffer(file);\n",
+              "    });\n",
+              "    // Wait for the data to be ready.\n",
+              "    let fileData = yield {\n",
+              "      promise: fileDataPromise,\n",
+              "      response: {\n",
+              "        action: 'continue',\n",
+              "      }\n",
+              "    };\n",
+              "\n",
+              "    // Use a chunked sending to avoid message size limits. See b/62115660.\n",
+              "    let position = 0;\n",
+              "    do {\n",
+              "      const length = Math.min(fileData.byteLength - position, MAX_PAYLOAD_SIZE);\n",
+              "      const chunk = new Uint8Array(fileData, position, length);\n",
+              "      position += length;\n",
+              "\n",
+              "      const base64 = btoa(String.fromCharCode.apply(null, chunk));\n",
+              "      yield {\n",
+              "        response: {\n",
+              "          action: 'append',\n",
+              "          file: file.name,\n",
+              "          data: base64,\n",
+              "        },\n",
+              "      };\n",
+              "\n",
+              "      let percentDone = fileData.byteLength === 0 ?\n",
+              "          100 :\n",
+              "          Math.round((position / fileData.byteLength) * 100);\n",
+              "      percent.textContent = `${percentDone}% done`;\n",
+              "\n",
+              "    } while (position < fileData.byteLength);\n",
+              "  }\n",
+              "\n",
+              "  // All done.\n",
+              "  yield {\n",
+              "    response: {\n",
+              "      action: 'complete',\n",
+              "    }\n",
+              "  };\n",
+              "}\n",
+              "\n",
+              "scope.google = scope.google || {};\n",
+              "scope.google.colab = scope.google.colab || {};\n",
+              "scope.google.colab._files = {\n",
+              "  _uploadFiles,\n",
+              "  _uploadFilesContinue,\n",
+              "};\n",
+              "})(self);\n",
+              "</script> "
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Saving kaggle.json to kaggle.json\n"
+          ]
+        },
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "{'kaggle.json': b'{\"username\":\"ranemelbasuony\",\"key\":\"cdd0d306a045fb7262f32df2625425b6\"}'}"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 1
+        }
+      ],
+      "source": [
+        "from google.colab import files\n",
+        "files.upload()"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!pip install kaggle\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "h_rnruAJV2b3",
+        "outputId": "1c84733d-d524-4a6b-8437-a2c8b9c7ad66"
+      },
+      "execution_count": 2,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Requirement already satisfied: kaggle in /usr/local/lib/python3.11/dist-packages (1.7.4.2)\n",
+            "Requirement already satisfied: bleach in /usr/local/lib/python3.11/dist-packages (from kaggle) (6.2.0)\n",
+            "Requirement already satisfied: certifi>=14.05.14 in /usr/local/lib/python3.11/dist-packages (from kaggle) (2025.1.31)\n",
+            "Requirement already satisfied: charset-normalizer in /usr/local/lib/python3.11/dist-packages (from kaggle) (3.4.1)\n",
+            "Requirement already satisfied: idna in /usr/local/lib/python3.11/dist-packages (from kaggle) (3.10)\n",
+            "Requirement already satisfied: protobuf in /usr/local/lib/python3.11/dist-packages (from kaggle) (5.29.3)\n",
+            "Requirement already satisfied: python-dateutil>=2.5.3 in /usr/local/lib/python3.11/dist-packages (from kaggle) (2.8.2)\n",
+            "Requirement already satisfied: python-slugify in /usr/local/lib/python3.11/dist-packages (from kaggle) (8.0.4)\n",
+            "Requirement already satisfied: requests in /usr/local/lib/python3.11/dist-packages (from kaggle) (2.32.3)\n",
+            "Requirement already satisfied: setuptools>=21.0.0 in /usr/local/lib/python3.11/dist-packages (from kaggle) (75.1.0)\n",
+            "Requirement already satisfied: six>=1.10 in /usr/local/lib/python3.11/dist-packages (from kaggle) (1.17.0)\n",
+            "Requirement already satisfied: text-unidecode in /usr/local/lib/python3.11/dist-packages (from kaggle) (1.3)\n",
+            "Requirement already satisfied: tqdm in /usr/local/lib/python3.11/dist-packages (from kaggle) (4.67.1)\n",
+            "Requirement already satisfied: urllib3>=1.15.1 in /usr/local/lib/python3.11/dist-packages (from kaggle) (2.3.0)\n",
+            "Requirement already satisfied: webencodings in /usr/local/lib/python3.11/dist-packages (from kaggle) (0.5.1)\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import os\n",
+        "import shutil\n",
+        "\n",
+        "os.makedirs(\"/root/.kaggle/\", exist_ok=True)\n",
+        "\n",
+        "shutil.move(\"kaggle.json\", \"/root/.kaggle/\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 35
+        },
+        "id": "7psrwo1gWCzg",
+        "outputId": "e20f1724-2978-40da-c4f2-9c42eb9e7a61"
+      },
+      "execution_count": 3,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "'/root/.kaggle/kaggle.json'"
+            ],
+            "application/vnd.google.colaboratory.intrinsic+json": {
+              "type": "string"
+            }
+          },
+          "metadata": {},
+          "execution_count": 3
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!chmod 600 ~/.kaggle/kaggle.json\n"
+      ],
+      "metadata": {
+        "id": "rpVjTUYeWFNw"
+      },
+      "execution_count": 4,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!kaggle datasets download -d mohamedsaeed823/arslvideodataset"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "VwuZQuj1WKER",
+        "outputId": "f4b7589d-bd55-4fc2-9918-68214586bf8e"
+      },
+      "execution_count": 5,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Dataset URL: https://www.kaggle.com/datasets/mohamedsaeed823/arslvideodataset\n",
+            "License(s): CC0-1.0\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import zipfile\n",
+        "\n",
+        "dataset_zip = \"arslvideodataset.zip\"\n",
+        "with zipfile.ZipFile(dataset_zip, 'r') as zip_ref:\n",
+        "    zip_ref.extractall(\"/content/dataset\")\n",
+        "\n",
+        "print(\"extract done: /content/dataset\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "VyDbdFG3WYEg",
+        "outputId": "d7a85336-bf4f-452f-9869-ceed59b7db89"
+      },
+      "execution_count": 6,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "extract done: /content/dataset\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import cv2\n",
+        "import os\n",
+        "import numpy as np\n",
+        "import tensorflow as tf\n",
+        "from tensorflow.keras.layers import Conv3D, MaxPooling3D, Flatten, Dense, Dropout, LayerNormalization, LSTM, TimeDistributed, BatchNormalization, Bidirectional, MultiHeadAttention\n",
+        "from tensorflow.keras.optimizers import AdamW\n",
+        "from tensorflow.keras.preprocessing.image import ImageDataGenerator\n",
+        "from tensorflow.keras.callbacks import ReduceLROnPlateau"
+      ],
+      "metadata": {
+        "id": "egXQGY4wWjiX"
+      },
+      "execution_count": 7,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def extract_frames(video_path, num_frames=30, target_size=(64, 64)):\n",
+        "    cap = cv2.VideoCapture(video_path)\n",
+        "    frames = []\n",
+        "    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))\n",
+        "    frame_idxs = np.linspace(0, total_frames - 1, num_frames, dtype=int)\n",
+        "\n",
+        "    for idx in frame_idxs:\n",
+        "        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)\n",
+        "        ret, frame = cap.read()\n",
+        "        if not ret:\n",
+        "            break\n",
+        "        frame = cv2.resize(frame, target_size)\n",
+        "        frames.append(frame)\n",
+        "    cap.release()\n",
+        "\n",
+        "    while len(frames) < num_frames:\n",
+        "        frames.append(np.zeros((target_size[0], target_size[1], 3), dtype=np.uint8))\n",
+        "\n",
+        "    return np.array(frames)\n"
+      ],
+      "metadata": {
+        "id": "B4ShrkwgWmjh"
+      },
+      "execution_count": 8,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from sklearn.preprocessing import LabelEncoder\n",
+        "\n",
+        "def load_videos_from_directory(base_path):\n",
+        "    X, y = [], []\n",
+        "    class_labels = sorted(os.listdir(base_path))\n",
+        "\n",
+        "    for label in class_labels:\n",
+        "        label_path = os.path.join(base_path, label)\n",
+        "        if not os.path.isdir(label_path):\n",
+        "            continue\n",
+        "\n",
+        "        for video_name in os.listdir(label_path):\n",
+        "            video_path = os.path.join(label_path, video_name)\n",
+        "            if video_path.endswith(('.mp4', '.avi', '.mov')):\n",
+        "                frames = extract_frames(video_path)\n",
+        "                X.append(frames)\n",
+        "                y.append(label)\n",
+        "\n",
+        "    return np.array(X), np.array(y), class_labels\n",
+        "\n",
+        "train_path = \"/content/dataset/train\"\n",
+        "val_path = \"/content/dataset/val\"\n",
+        "\n",
+        "X_train, y_train, class_labels = load_videos_from_directory(train_path)\n",
+        "X_val, y_val, _ = load_videos_from_directory(val_path)\n",
+        "\n",
+        "label_encoder = LabelEncoder()\n",
+        "y_train_encoded = label_encoder.fit_transform(y_train)\n",
+        "y_val_encoded = label_encoder.transform(y_val)\n",
+        "\n",
+        "num_classes = len(class_labels)\n",
+        "y_train_onehot = tf.keras.utils.to_categorical(y_train_encoded, num_classes)\n",
+        "y_val_onehot = tf.keras.utils.to_categorical(y_val_encoded, num_classes)"
+      ],
+      "metadata": {
+        "id": "UYEAGkAvW6jg"
+      },
+      "execution_count": 9,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import albumentations as A\n",
+        "import numpy as np\n",
+        "\n",
+        "transform = A.Compose([\n",
+        "    A.HorizontalFlip(p=0.5),\n",
+        "    A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),\n",
+        "])\n",
+        "\n",
+        "def augment_frames(frames):\n",
+        "    return np.stack([transform(image=frame)[\"image\"] for frame in frames], axis=0).astype(np.float32)\n",
+        "\n",
+        "X_train_augmented = np.stack([augment_frames(video) for video in X_train], axis=0).astype(np.float32)\n",
+        "X_val_augmented = np.stack([augment_frames(video) for video in X_val], axis=0).astype(np.float32)\n",
+        "\n",
+        "print(\"Fixed shape - X_train:\", X_train_augmented.shape)\n",
+        "print(\"Fixed shape - X_val:\", X_val_augmented.shape)\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "gek4MLTnbzah",
+        "outputId": "6ee2b419-f41f-476f-fa3e-f480b899cdb7"
+      },
+      "execution_count": 73,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Fixed shape - X_train: (479, 30, 64, 64, 3)\n",
+            "Fixed shape - X_val: (72, 30, 64, 64, 3)\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "X_val = X_val[..., :3]  # Take only the first 3 channels\n",
+        "print(\"New shape of X_val:\", X_val.shape)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "KaDLFbztwQoI",
+        "outputId": "2a30fc5b-fb37-43cc-fc44-fa717850154e"
+      },
+      "execution_count": 69,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "New shape of X_val: (72, 30, 64, 64, 3)\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import tensorflow as tf\n",
+        "from tensorflow.keras.applications import ResNet50\n",
+        "from tensorflow.keras.layers import TimeDistributed, GlobalAveragePooling2D, Bidirectional, GRU, Dense, GlobalAveragePooling1D, Dropout, BatchNormalization\n",
+        "from tensorflow.keras.optimizers import AdamW\n",
+        "from tensorflow.keras.layers import MultiHeadAttention\n",
+        "\n",
+        "num_classes = 10\n",
+        "\n",
+        "base_cnn = ResNet50(weights=\"imagenet\", include_top=False, input_shape=(64, 64, 3))\n",
+        "for layer in base_cnn.layers[-20:]:\n",
+        "    layer.trainable = True\n",
+        "\n",
+        "inputs = tf.keras.Input(shape=(30, 64, 64, 3))\n",
+        "cnn_features = TimeDistributed(base_cnn)(inputs)\n",
+        "cnn_features = TimeDistributed(GlobalAveragePooling2D())(cnn_features)\n",
+        "cnn_features = BatchNormalization()(cnn_features)\n",
+        "\n",
+        "lstm = Bidirectional(GRU(256, return_sequences=True, dropout=0.4, recurrent_dropout=0.3, kernel_regularizer=tf.keras.regularizers.l2(1e-4)))(cnn_features)\n",
+        "num_classes=12\n",
+        "attention_output = MultiHeadAttention(num_heads=4, key_dim=128)(lstm, lstm)\n",
+        "attention_output = Dropout(0.3)(attention_output)\n",
+        "lstm_output = GlobalAveragePooling1D()(attention_output)\n",
+        "lstm_output = BatchNormalization()(lstm_output)\n",
+        "out = Dense(num_classes, activation=\"softmax\", kernel_regularizer=tf.keras.regularizers.l2(1e-4))(lstm_output)\n",
+        "\n",
+        "model = tf.keras.Model(inputs, out)\n",
+        "model.compile(optimizer=AdamW(learning_rate=5e-4, weight_decay=1e-4), loss=\"categorical_crossentropy\", metrics=[\"accuracy\"])\n",
+        "\n",
+        "model.summary()\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 607
+        },
+        "id": "cuJ5iDF_b8WL",
+        "outputId": "a8987d02-8be2-41de-ea91-f4210158423c"
+      },
+      "execution_count": 90,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/plain": [
+              "\u001b[1mModel: \"functional_9\"\u001b[0m\n"
+            ],
+            "text/html": [
+              "<pre style=\"white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace\"><span style=\"font-weight: bold\">Model: \"functional_9\"</span>\n",
+              "</pre>\n"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/plain": [
+              "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓\n",
+              "┃\u001b[1m \u001b[0m\u001b[1mLayer (type)             \u001b[0m\u001b[1m \u001b[0m┃\u001b[1m \u001b[0m\u001b[1mOutput Shape          \u001b[0m\u001b[1m \u001b[0m┃\u001b[1m \u001b[0m\u001b[1m       Param #\u001b[0m\u001b[1m \u001b[0m┃\u001b[1m \u001b[0m\u001b[1mConnected to          \u001b[0m\u001b[1m \u001b[0m┃\n",
+              "┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩\n",
+              "│ input_layer_21            │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m30\u001b[0m, \u001b[38;5;34m64\u001b[0m, \u001b[38;5;34m64\u001b[0m, \u001b[38;5;34m3\u001b[0m)  │              \u001b[38;5;34m0\u001b[0m │ -                      │\n",
+              "│ (\u001b[38;5;33mInputLayer\u001b[0m)              │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ time_distributed_20       │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m30\u001b[0m, \u001b[38;5;34m2\u001b[0m, \u001b[38;5;34m2\u001b[0m, \u001b[38;5;34m2048\u001b[0m) │     \u001b[38;5;34m23,587,712\u001b[0m │ input_layer_21[\u001b[38;5;34m0\u001b[0m][\u001b[38;5;34m0\u001b[0m]   │\n",
+              "│ (\u001b[38;5;33mTimeDistributed\u001b[0m)         │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ time_distributed_21       │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m30\u001b[0m, \u001b[38;5;34m2048\u001b[0m)       │              \u001b[38;5;34m0\u001b[0m │ time_distributed_20[\u001b[38;5;34m0\u001b[0m… │\n",
+              "│ (\u001b[38;5;33mTimeDistributed\u001b[0m)         │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ batch_normalization_2     │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m30\u001b[0m, \u001b[38;5;34m2048\u001b[0m)       │          \u001b[38;5;34m8,192\u001b[0m │ time_distributed_21[\u001b[38;5;34m0\u001b[0m… │\n",
+              "│ (\u001b[38;5;33mBatchNormalization\u001b[0m)      │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ bidirectional_13          │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m30\u001b[0m, \u001b[38;5;34m512\u001b[0m)        │      \u001b[38;5;34m3,542,016\u001b[0m │ batch_normalization_2… │\n",
+              "│ (\u001b[38;5;33mBidirectional\u001b[0m)           │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ multi_head_attention_9    │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m30\u001b[0m, \u001b[38;5;34m512\u001b[0m)        │      \u001b[38;5;34m1,050,624\u001b[0m │ bidirectional_13[\u001b[38;5;34m0\u001b[0m][\u001b[38;5;34m0\u001b[0m… │\n",
+              "│ (\u001b[38;5;33mMultiHeadAttention\u001b[0m)      │                        │                │ bidirectional_13[\u001b[38;5;34m0\u001b[0m][\u001b[38;5;34m0\u001b[0m] │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ dropout_17 (\u001b[38;5;33mDropout\u001b[0m)      │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m30\u001b[0m, \u001b[38;5;34m512\u001b[0m)        │              \u001b[38;5;34m0\u001b[0m │ multi_head_attention_… │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ global_average_pooling1d… │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m512\u001b[0m)            │              \u001b[38;5;34m0\u001b[0m │ dropout_17[\u001b[38;5;34m0\u001b[0m][\u001b[38;5;34m0\u001b[0m]       │\n",
+              "│ (\u001b[38;5;33mGlobalAveragePooling1D\u001b[0m)  │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ batch_normalization_3     │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m512\u001b[0m)            │          \u001b[38;5;34m2,048\u001b[0m │ global_average_poolin… │\n",
+              "│ (\u001b[38;5;33mBatchNormalization\u001b[0m)      │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ dense_9 (\u001b[38;5;33mDense\u001b[0m)           │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m12\u001b[0m)             │          \u001b[38;5;34m6,156\u001b[0m │ batch_normalization_3… │\n",
+              "└───────────────────────────┴────────────────────────┴────────────────┴────────────────────────┘\n"
+            ],
+            "text/html": [
+              "<pre style=\"white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace\">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓\n",
+              "┃<span style=\"font-weight: bold\"> Layer (type)              </span>┃<span style=\"font-weight: bold\"> Output Shape           </span>┃<span style=\"font-weight: bold\">        Param # </span>┃<span style=\"font-weight: bold\"> Connected to           </span>┃\n",
+              "┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩\n",
+              "│ input_layer_21            │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">30</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">64</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">64</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">3</span>)  │              <span style=\"color: #00af00; text-decoration-color: #00af00\">0</span> │ -                      │\n",
+              "│ (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">InputLayer</span>)              │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ time_distributed_20       │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">30</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">2</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">2</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">2048</span>) │     <span style=\"color: #00af00; text-decoration-color: #00af00\">23,587,712</span> │ input_layer_21[<span style=\"color: #00af00; text-decoration-color: #00af00\">0</span>][<span style=\"color: #00af00; text-decoration-color: #00af00\">0</span>]   │\n",
+              "│ (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">TimeDistributed</span>)         │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ time_distributed_21       │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">30</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">2048</span>)       │              <span style=\"color: #00af00; text-decoration-color: #00af00\">0</span> │ time_distributed_20[<span style=\"color: #00af00; text-decoration-color: #00af00\">0</span>… │\n",
+              "│ (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">TimeDistributed</span>)         │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ batch_normalization_2     │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">30</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">2048</span>)       │          <span style=\"color: #00af00; text-decoration-color: #00af00\">8,192</span> │ time_distributed_21[<span style=\"color: #00af00; text-decoration-color: #00af00\">0</span>… │\n",
+              "│ (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">BatchNormalization</span>)      │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ bidirectional_13          │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">30</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">512</span>)        │      <span style=\"color: #00af00; text-decoration-color: #00af00\">3,542,016</span> │ batch_normalization_2… │\n",
+              "│ (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">Bidirectional</span>)           │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ multi_head_attention_9    │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">30</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">512</span>)        │      <span style=\"color: #00af00; text-decoration-color: #00af00\">1,050,624</span> │ bidirectional_13[<span style=\"color: #00af00; text-decoration-color: #00af00\">0</span>][<span style=\"color: #00af00; text-decoration-color: #00af00\">0</span>… │\n",
+              "│ (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">MultiHeadAttention</span>)      │                        │                │ bidirectional_13[<span style=\"color: #00af00; text-decoration-color: #00af00\">0</span>][<span style=\"color: #00af00; text-decoration-color: #00af00\">0</span>] │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ dropout_17 (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">Dropout</span>)      │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">30</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">512</span>)        │              <span style=\"color: #00af00; text-decoration-color: #00af00\">0</span> │ multi_head_attention_… │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ global_average_pooling1d… │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">512</span>)            │              <span style=\"color: #00af00; text-decoration-color: #00af00\">0</span> │ dropout_17[<span style=\"color: #00af00; text-decoration-color: #00af00\">0</span>][<span style=\"color: #00af00; text-decoration-color: #00af00\">0</span>]       │\n",
+              "│ (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">GlobalAveragePooling1D</span>)  │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ batch_normalization_3     │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">512</span>)            │          <span style=\"color: #00af00; text-decoration-color: #00af00\">2,048</span> │ global_average_poolin… │\n",
+              "│ (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">BatchNormalization</span>)      │                        │                │                        │\n",
+              "├───────────────────────────┼────────────────────────┼────────────────┼────────────────────────┤\n",
+              "│ dense_9 (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">Dense</span>)           │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">12</span>)             │          <span style=\"color: #00af00; text-decoration-color: #00af00\">6,156</span> │ batch_normalization_3… │\n",
+              "└───────────────────────────┴────────────────────────┴────────────────┴────────────────────────┘\n",
+              "</pre>\n"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/plain": [
+              "\u001b[1m Total params: \u001b[0m\u001b[38;5;34m28,196,748\u001b[0m (107.56 MB)\n"
+            ],
+            "text/html": [
+              "<pre style=\"white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace\"><span style=\"font-weight: bold\"> Total params: </span><span style=\"color: #00af00; text-decoration-color: #00af00\">28,196,748</span> (107.56 MB)\n",
+              "</pre>\n"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/plain": [
+              "\u001b[1m Trainable params: \u001b[0m\u001b[38;5;34m28,138,508\u001b[0m (107.34 MB)\n"
+            ],
+            "text/html": [
+              "<pre style=\"white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace\"><span style=\"font-weight: bold\"> Trainable params: </span><span style=\"color: #00af00; text-decoration-color: #00af00\">28,138,508</span> (107.34 MB)\n",
+              "</pre>\n"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/plain": [
+              "\u001b[1m Non-trainable params: \u001b[0m\u001b[38;5;34m58,240\u001b[0m (227.50 KB)\n"
+            ],
+            "text/html": [
+              "<pre style=\"white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace\"><span style=\"font-weight: bold\"> Non-trainable params: </span><span style=\"color: #00af00; text-decoration-color: #00af00\">58,240</span> (227.50 KB)\n",
+              "</pre>\n"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint\n",
+        "\n",
+        "lr_scheduler = ReduceLROnPlateau(\n",
+        "    monitor=\"val_loss\", factor=0.5, patience=5, min_lr=1e-6, verbose=1\n",
+        ")\n",
+        "\n",
+        "early_stopping = EarlyStopping(\n",
+        "    monitor=\"val_loss\", patience=10, restore_best_weights=True, verbose=1\n",
+        ")\n",
+        "\n",
+        "checkpoint = ModelCheckpoint(\n",
+        "    \"best_model.h5\", monitor=\"val_loss\", save_best_only=True, verbose=1\n",
+        ")\n",
+        "\n",
+        "callbacks = [lr_scheduler, early_stopping, checkpoint]\n",
+        "\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "hkW27ZSIcG7g"
+      },
+      "execution_count": 91,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "model.fit(\n",
+        "    X_train_augmented, y_train,\n",
+        "    validation_data=(X_val_augmented, y_val),\n",
+        "    epochs=50,\n",
+        "    batch_size=32,\n",
+        "    callbacks=callbacks\n",
+        ")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "dU1ylq81cWnR",
+        "outputId": "318a9bf9-1adf-4129-8e21-37cd780edf1c"
+      },
+      "execution_count": 92,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Epoch 1/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.2169 - loss: 3.6080\n",
+            "Epoch 1: val_loss improved from inf to 2.71802, saving model to best_model.h5\n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. \n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\r\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m616s\u001b[0m 7s/step - accuracy: 0.2222 - loss: 3.5928 - val_accuracy: 0.0833 - val_loss: 2.7180 - learning_rate: 5.0000e-04\n",
+            "Epoch 2/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.6041 - loss: 1.9440\n",
+            "Epoch 2: val_loss did not improve from 2.71802\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m16s\u001b[0m 1s/step - accuracy: 0.6062 - loss: 1.9229 - val_accuracy: 0.0833 - val_loss: 2.7269 - learning_rate: 5.0000e-04\n",
+            "Epoch 3/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.7737 - loss: 0.8901\n",
+            "Epoch 3: val_loss did not improve from 2.71802\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m16s\u001b[0m 1s/step - accuracy: 0.7759 - loss: 0.8866 - val_accuracy: 0.0833 - val_loss: 2.7441 - learning_rate: 5.0000e-04\n",
+            "Epoch 4/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.8652 - loss: 0.7010\n",
+            "Epoch 4: val_loss did not improve from 2.71802\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m16s\u001b[0m 1s/step - accuracy: 0.8657 - loss: 0.6991 - val_accuracy: 0.0833 - val_loss: 2.7566 - learning_rate: 5.0000e-04\n",
+            "Epoch 5/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.9190 - loss: 0.4730\n",
+            "Epoch 5: val_loss did not improve from 2.71802\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m16s\u001b[0m 1s/step - accuracy: 0.9191 - loss: 0.4739 - val_accuracy: 0.0833 - val_loss: 2.8146 - learning_rate: 5.0000e-04\n",
+            "Epoch 6/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.9440 - loss: 0.4254\n",
+            "Epoch 6: ReduceLROnPlateau reducing learning rate to 0.0002500000118743628.\n",
+            "\n",
+            "Epoch 6: val_loss did not improve from 2.71802\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m16s\u001b[0m 1s/step - accuracy: 0.9451 - loss: 0.4230 - val_accuracy: 0.0833 - val_loss: 2.8626 - learning_rate: 5.0000e-04\n",
+            "Epoch 7/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.9376 - loss: 0.4003\n",
+            "Epoch 7: val_loss did not improve from 2.71802\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m16s\u001b[0m 1s/step - accuracy: 0.9387 - loss: 0.3974 - val_accuracy: 0.0833 - val_loss: 2.9056 - learning_rate: 2.5000e-04\n",
+            "Epoch 8/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.9900 - loss: 0.2754\n",
+            "Epoch 8: val_loss did not improve from 2.71802\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m16s\u001b[0m 1s/step - accuracy: 0.9901 - loss: 0.2748 - val_accuracy: 0.0833 - val_loss: 2.9377 - learning_rate: 2.5000e-04\n",
+            "Epoch 9/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.9960 - loss: 0.2390\n",
+            "Epoch 9: val_loss did not improve from 2.71802\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m16s\u001b[0m 1s/step - accuracy: 0.9959 - loss: 0.2392 - val_accuracy: 0.0833 - val_loss: 2.9783 - learning_rate: 2.5000e-04\n",
+            "Epoch 10/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.9962 - loss: 0.2464\n",
+            "Epoch 10: val_loss did not improve from 2.71802\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m16s\u001b[0m 1s/step - accuracy: 0.9963 - loss: 0.2458 - val_accuracy: 0.0833 - val_loss: 3.0314 - learning_rate: 2.5000e-04\n",
+            "Epoch 11/50\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 1s/step - accuracy: 0.9918 - loss: 0.2617\n",
+            "Epoch 11: ReduceLROnPlateau reducing learning rate to 0.0001250000059371814.\n",
+            "\n",
+            "Epoch 11: val_loss did not improve from 2.71802\n",
+            "\u001b[1m15/15\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m16s\u001b[0m 1s/step - accuracy: 0.9921 - loss: 0.2603 - val_accuracy: 0.0833 - val_loss: 3.1061 - learning_rate: 2.5000e-04\n",
+            "Epoch 11: early stopping\n",
+            "Restoring model weights from the end of the best epoch: 1.\n"
+          ]
+        },
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "<keras.src.callbacks.history.History at 0x7c3078d7c650>"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 92
+        }
+      ]
+    }
+  ]
+}
